@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stone.wms.infrastructure.mapper.InventoryMapper">
+    <resultMap id="InventoryEntityMap" type="com.stone.wms.infrastructure.entity.InventoryEntity">
+        <id column="id" property="id"/>
+        <result column="warehouse_id" property="warehouseId"/>
+        <result column="location_id" property="locationId"/>
+        <result column="sku_id" property="skuId"/>
+        <result column="lot_no" property="lotNo"/>
+        <result column="inventory_status" property="inventoryStatus"/>
+        <result column="on_hand_qty" property="onHandQty"/>
+        <result column="available_qty" property="availableQty"/>
+        <result column="reserved_qty" property="reservedQty"/>
+        <result column="frozen_qty" property="frozenQty"/>
+        <result column="version" property="version"/>
+        <result column="deleted" property="deleted"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByDimension" resultMap="InventoryEntityMap">
+        SELECT id,
+               warehouse_id,
+               location_id,
+               sku_id,
+               lot_no,
+               inventory_status,
+               on_hand_qty,
+               available_qty,
+               reserved_qty,
+               frozen_qty,
+               version,
+               deleted,
+               created_at,
+               updated_at
+        FROM wms_inventory
+        WHERE warehouse_id = #{warehouseId}
+          AND location_id = #{locationId}
+          AND sku_id = #{skuId}
+          AND lot_no = #{lotNo}
+          AND inventory_status = #{inventoryStatus}
+          AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <update id="updateQuantityWithVersion">
+        UPDATE wms_inventory
+        SET on_hand_qty = #{entity.onHandQty},
+            available_qty = #{entity.availableQty},
+            reserved_qty = #{entity.reservedQty},
+            frozen_qty = #{entity.frozenQty},
+            version = #{entity.version},
+            updated_at = NOW()
+        WHERE id = #{entity.id}
+          AND version = #{oldVersion}
+          AND deleted = 0
+          AND on_hand_qty >= 0
+          AND available_qty >= 0
+          AND reserved_qty >= 0
+          AND frozen_qty >= 0
+    </update>
+</mapper>
