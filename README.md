@@ -1,1 +1,1 @@
-这是一个用aicoing 生成的wms业务系统
+这是一个用aicoding工具自动化生成的wms业务系统
