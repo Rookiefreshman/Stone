@@ -40,6 +40,8 @@ curl http://localhost:8080/api/v1/inventory/SKU-001
 - [`docs/02-technical-architecture.md`](docs/02-technical-architecture.md)：Java 技术架构、模块划分、数据/集成/部署演进。
 - [`docs/03-test-strategy.md`](docs/03-test-strategy.md)：测试金字塔、关键用例、验收标准。
 - [`docs/04-skill-flow-and-token-optimization.md`](docs/04-skill-flow-and-token-optimization.md)：Skill 流、需求模板、上下文压缩与 init 策略。
+- [`docs/05-persistence-and-migration-roadmap.md`](docs/05-persistence-and-migration-roadmap.md)：下一阶段持久化、数据库迁移、仓储替换和并发扣减设计。
+- [`docs/adr/0001-persistence-migration-strategy.md`](docs/adr/0001-persistence-migration-strategy.md)：持久化与迁移策略架构决策记录。
 
 ## 当前代码能力
 
@@ -48,5 +50,6 @@ curl http://localhost:8080/api/v1/inventory/SKU-001
 - 入库：按 SKU + 库位增加库存，并记录库存流水。
 - 出库：按 FIFO 风格从多个库位扣减库存，并校验库存不足。
 - 查询：按 SKU 汇总总量、库位明细与库存流水。
+- 迁移设计：提供 Flyway 兼容 SQL 迁移脚本、迁移目录校验代码和下一阶段数据库落地路线。
 
-下一阶段建议先引入持久化与数据库迁移，再扩展为多模块服务。
+下一阶段建议按 `docs/05-persistence-and-migration-roadmap.md` 引入 JDBC 仓储、事务边界、Testcontainers 集成测试和并发扣减保护，再扩展为多模块服务。

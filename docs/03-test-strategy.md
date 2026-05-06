@@ -19,13 +19,15 @@ WMS 测试必须优先保护库存准确性、单据状态一致性、异常可�
 | 入库 | SKU 标准化、总库存增加、生成 RECEIVE 流水 |
 | 跨库位出库 | 按库位分配拣货、总库存减少、生成 SHIP 流水 |
 | 库存不足 | 抛出业务异常且不扣减库存 |
+| 迁移目录 | SQL 文件命名合法、版本递增、描述可解析 |
 
 ## 4. MVP 应补 API 用例
 
-1. `POST /api/v1/warehouse/receive`：合法请求返回库存汇总。
-2. `POST /api/v1/warehouse/receive`：数量小于等于 0 返回 400。
-3. `POST /api/v1/warehouse/ship`：库存不足返回 409。
-4. `GET /api/v1/inventory/{sku}`：不存在 SKU 返回总量 0。
+1. 迁移脚本：空库可按版本顺序执行，重复执行策略由 Flyway 管理。
+2. `POST /api/v1/warehouse/receive`：合法请求返回库存汇总。
+3. `POST /api/v1/warehouse/receive`：数量小于等于 0 返回 400。
+4. `POST /api/v1/warehouse/ship`：库存不足返回 409。
+5. `GET /api/v1/inventory/{sku}`：不存在 SKU 返回总量 0。
 
 ## 5. 业务验收用例
 

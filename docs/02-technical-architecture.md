@@ -20,7 +20,9 @@ api -> service -> repository
 - `dto`：外部 API 契约。
 - `service`：入库、出库、库存查询用例。
 - `domain`：库存对象与流水。
-- `repository`：仓储接口与内存实现。
+- `repository`：仓储接口与内存实现；下一阶段新增 JDBC/JPA/MyBatis 实现。
+- `migration`：迁移脚本目录加载和命名校验。
+- `src/main/resources/db/migration`：Flyway 兼容 SQL 迁移脚本。
 - `exception`：业务异常与全局异常处理。
 
 ## 3. Java 核心技术栈规划
@@ -57,7 +59,7 @@ wms-parent
 
 ## 5. 数据模型建议
 
-核心表：
+当前已提供 `V1__init_wms_core.sql` 与 `V2__inventory_query_indexes.sql` 作为下一阶段数据库落地基线。核心表：
 
 - `sku`：商品主数据。
 - `warehouse` / `zone` / `location`：仓库空间模型。
@@ -71,7 +73,7 @@ wms-parent
 
 - 同步 REST：适合主数据查询、单据创建、库存查询。
 - 异步事件：适合库存变更、单据状态回传、设备事件。
-- Outbox：业务写库与事件发布必须具备最终一致性保障。
+- Outbox：业务写库与事件发布必须具备最终一致性保障，当前 schema 已预留 `outbox_event`。
 - 幂等键：外部单据号 + 业务类型 + 行号，避免重复收货/出库。
 
 ## 7. 非功能需求
