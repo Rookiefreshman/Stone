@@ -15,3 +15,10 @@
 ```bash
 mvn test
 ```
+
+## WMS + WES + WCS 设计
+
+- [系统概要设计](docs/architecture.md)
+- [模块详细设计与流程图](docs/modules.md)
+- [数据库设计与参考建表 SQL](docs/database.md)
+- [HTTP 接口设计](docs/api.md)
