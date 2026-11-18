@@ -35,7 +35,7 @@ class OutboundAllocationApplicationServiceTest {
                 new InventoryDimension(1L, 10L, 100L, "LOT-1", InventoryStatus.AVAILABLE),
                 10, 10, 0, 0, 0);
 
-        when(outboundOrderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(outboundOrderRepository.lockById(1L)).thenReturn(Optional.of(order));
         when(inventoryRepository.findByDimension(any(InventoryDimension.class))).thenReturn(Optional.of(inventory));
         when(inventoryRepository.save(any(Inventory.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(outboundOrderRepository.save(any(OutboundOrder.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -48,5 +48,6 @@ class OutboundAllocationApplicationServiceTest {
         assertThat(inventory.getReservedQty()).isEqualTo(3);
         verify(inventoryRepository).save(inventory);
         verify(outboundOrderRepository).save(order);
+        verify(outboundOrderRepository).recordAllocation(1L, "idem-1");
     }
 }

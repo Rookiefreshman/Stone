@@ -31,7 +31,25 @@ public class OutboundOrderRepositoryImpl implements OutboundOrderRepository {
 
     @Override
     public Optional<OutboundOrder> findById(Long orderId) {
-        OutboundOrderEntity orderEntity = outboundOrderMapper.selectById(orderId);
+        return assemble(orderId, outboundOrderMapper.selectById(orderId));
+    }
+
+    @Override
+    public Optional<OutboundOrder> lockById(Long orderId) {
+        return assemble(orderId, outboundOrderMapper.lockById(orderId));
+    }
+
+    @Override
+    public String allocationKey(Long orderId) {
+        return outboundOrderMapper.allocationKey(orderId);
+    }
+
+    @Override
+    public void recordAllocation(Long orderId, String key) {
+        outboundOrderMapper.recordAllocation(orderId, key);
+    }
+
+    private Optional<OutboundOrder> assemble(Long orderId, OutboundOrderEntity orderEntity) {
         if (orderEntity == null || Integer.valueOf(1).equals(orderEntity.getDeleted())) {
             return Optional.empty();
         }

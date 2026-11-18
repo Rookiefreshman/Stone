@@ -10,5 +10,11 @@ import java.util.Optional;
 public interface OutboundOrderRepository {
     Optional<OutboundOrder> findById(Long orderId);
 
+    Optional<OutboundOrder> lockById(Long orderId);
+
+    String allocationKey(Long orderId);
+
+    void recordAllocation(Long orderId, String key);
+
     OutboundOrder save(OutboundOrder order);
 }

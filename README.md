@@ -22,3 +22,5 @@ mvn test
 - [模块详细设计与流程图](docs/modules.md)
 - [数据库设计与参考建表 SQL](docs/database.md)
 - [HTTP 接口设计](docs/api.md)
+
+[高并发、幂等、任务容量设计与 MySQL 复验](docs/concurrency-dispatch.md)
