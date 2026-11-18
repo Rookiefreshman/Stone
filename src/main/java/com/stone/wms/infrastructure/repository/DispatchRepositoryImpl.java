@@ -1,6 +1,7 @@
 package com.stone.wms.infrastructure.repository;
 
 import com.stone.wms.domain.model.dispatch.DispatchTask;
+import com.stone.wms.domain.model.inventory.StockWork;
 import com.stone.wms.domain.repository.DispatchRepository;
 import com.stone.wms.infrastructure.entity.DispatchTaskEntity;
 import com.stone.wms.infrastructure.mapper.DispatchMapper;
@@ -18,7 +19,12 @@ public class DispatchRepositoryImpl implements DispatchRepository {
     }
 
     private static DispatchTask toDomain(DispatchTaskEntity row) {
-        return row == null ? null : new DispatchTask(row.id, row.taskKey, row.priority, row.state, row.deviceCode, row.claimKey);
+        if (row == null) {
+            return null;
+        }
+        StockWork work = row.workType == null ? null : new StockWork(row.workType, row.receiptKey, row.skuId,
+                row.lotNo, row.sourceId, row.destinationId, row.quantity);
+        return new DispatchTask(row.id, row.taskKey, row.priority, row.state, row.deviceCode, row.claimKey, work);
     }
 
     @Override public Capacity lockCapacity(long warehouseId) { return mapper.lockCapacity(warehouseId); }
@@ -45,8 +51,8 @@ public class DispatchRepositoryImpl implements DispatchRepository {
     }
 
     @Override public Event event(long taskId, String eventKey) { return mapper.event(taskId, eventKey); }
-    @Override public void insertEvent(long taskId, String eventKey, DispatchTask.State target, boolean reconciled, String reason) {
-        mapper.insertEvent(taskId, eventKey, target, reconciled, reason);
+    @Override public void insertEvent(long taskId, String eventKey, DispatchTask.State target, boolean reconciled, String reason, Integer completedQty) {
+        mapper.insertEvent(taskId, eventKey, target, reconciled, reason, completedQty);
     }
 
     @Override public int updateTask(long warehouseId, long taskId, DispatchTask.State from, DispatchTask.State to) {

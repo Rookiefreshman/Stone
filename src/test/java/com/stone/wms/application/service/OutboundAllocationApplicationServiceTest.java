@@ -11,6 +11,7 @@ import com.stone.wms.domain.model.outbound.OutboundOrderLine;
 import com.stone.wms.domain.model.outbound.OutboundOrderStatus;
 import com.stone.wms.domain.repository.InventoryRepository;
 import com.stone.wms.domain.repository.OutboundOrderRepository;
+import com.stone.wms.domain.repository.StockWorkRepository;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -28,7 +29,7 @@ class OutboundAllocationApplicationServiceTest {
         OutboundOrderRepository outboundOrderRepository = mock(OutboundOrderRepository.class);
         InventoryRepository inventoryRepository = mock(InventoryRepository.class);
         OutboundAllocationApplicationService service = new OutboundAllocationApplicationService(
-                outboundOrderRepository, inventoryRepository, new OutboundOrderAssembler());
+                outboundOrderRepository, inventoryRepository, new OutboundOrderAssembler(), mock(StockWorkRepository.class));
         OutboundOrder order = new OutboundOrder(1L, "SO-1", 1L, OutboundOrderStatus.APPROVED,
                 Arrays.asList(new OutboundOrderLine(11L, 100L, 10L, "LOT-1", 3, 0)));
         Inventory inventory = new Inventory(21L,

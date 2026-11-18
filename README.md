@@ -24,3 +24,5 @@ mvn test
 - [HTTP 接口设计](docs/api.md)
 
 [高并发、幂等、任务容量设计与 MySQL 复验](docs/concurrency-dispatch.md)
+
+[入库、移库、库位冻结与库存流水](docs/stock-work-execution.md)

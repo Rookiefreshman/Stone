@@ -2,6 +2,7 @@ package com.stone.wms.infrastructure.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.stone.wms.infrastructure.entity.InventoryEntity;
+import com.stone.wms.domain.model.inventory.InventoryChange;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -15,6 +16,8 @@ public interface InventoryMapper extends BaseMapper<InventoryEntity> {
                                       @Param("skuId") Long skuId,
                                       @Param("lotNo") String lotNo,
                                       @Param("inventoryStatus") String inventoryStatus);
+
+    void appendChange(@Param("entry") InventoryChange.Entry entry);
 
     int updateQuantityWithVersion(@Param("entity") InventoryEntity entity, @Param("oldVersion") Integer oldVersion);
 }

@@ -24,12 +24,14 @@ public interface DispatchMapper {
              "<if test='device != null'>AND device_code = #{device}</if>", "</script>"})
     int activeCount(@Param("warehouse") long warehouse, @Param("device") String device);
 
-    String PROJECTION = "SELECT id, task_key, priority, state, device_code, claim_key FROM wes_dispatch_task ";
+    String PROJECTION = "SELECT t.id, t.task_key, t.priority, t.state, t.device_code, t.claim_key,"
+            + " w.work_type, w.receipt_key, w.sku_id, w.lot_no, w.source_id, w.destination_id, w.quantity"
+            + " FROM wes_dispatch_task t LEFT JOIN wms_stock_work w ON w.task_id = t.id ";
 
-    @Select(PROJECTION + "WHERE warehouse_id = #{warehouse} AND task_key = #{key}")
+    @Select(PROJECTION + "WHERE t.warehouse_id = #{warehouse} AND t.task_key = #{key}")
     DispatchTaskEntity taskByKey(@Param("warehouse") long warehouse, @Param("key") String key);
 
-    @Select(PROJECTION + "WHERE warehouse_id = #{warehouse} AND id = #{id}")
+    @Select(PROJECTION + "WHERE t.warehouse_id = #{warehouse} AND t.id = #{id}")
     DispatchTaskEntity task(@Param("warehouse") long warehouse, @Param("id") long id);
 
     @Insert("INSERT INTO wes_dispatch_task (warehouse_id, task_key, priority, state) VALUES (#{warehouse}, #{key}, #{priority}, 'READY')")
@@ -38,11 +40,11 @@ public interface DispatchMapper {
     @Select("SELECT device_code, requested_limit FROM wes_claim WHERE warehouse_id = #{warehouse} AND claim_key = #{key}")
     Claim claim(@Param("warehouse") long warehouse, @Param("key") String key);
 
-    @Select(PROJECTION + "WHERE warehouse_id = #{warehouse} AND claim_key = #{key} ORDER BY priority DESC, id")
+    @Select(PROJECTION + "WHERE t.warehouse_id = #{warehouse} AND t.claim_key = #{key} ORDER BY t.priority_rank, t.id")
     List<DispatchTaskEntity> claimedTasks(@Param("warehouse") long warehouse, @Param("key") String key);
 
     @Select("SELECT id FROM wes_dispatch_task WHERE warehouse_id = #{warehouse} AND state = 'READY'"
-            + " ORDER BY priority DESC, id LIMIT #{limit}")
+            + " ORDER BY priority_rank, id LIMIT #{limit}")
     List<Long> readyIds(@Param("warehouse") long warehouse, @Param("limit") int limit);
 
     @Insert("INSERT INTO wes_claim (warehouse_id, claim_key, device_code, requested_limit) VALUES (#{warehouse}, #{key}, #{device}, #{limit})")
@@ -55,12 +57,14 @@ public interface DispatchMapper {
     int claimTasks(@Param("warehouse") long warehouse, @Param("ids") List<Long> ids, @Param("key") String key,
                    @Param("device") String device);
 
-    @Select("SELECT target_state, reconciled, reason FROM wes_dispatch_event WHERE task_id = #{id} AND event_key = #{key}")
+    @Select("SELECT target_state, reconciled, reason, completed_qty FROM wes_dispatch_event WHERE task_id = #{id} AND event_key = #{key}")
     Event event(@Param("id") long id, @Param("key") String key);
 
-    @Insert("INSERT INTO wes_dispatch_event (task_id, event_key, target_state, reconciled, reason) VALUES (#{id}, #{key}, #{state}, #{reconciled}, #{reason,jdbcType=VARCHAR})")
+    @Insert("INSERT INTO wes_dispatch_event (task_id, event_key, target_state, reconciled, reason, completed_qty)"
+            + " VALUES (#{id}, #{key}, #{state}, #{reconciled}, #{reason,jdbcType=VARCHAR}, #{completedQty,jdbcType=INTEGER})")
     void insertEvent(@Param("id") long id, @Param("key") String key, @Param("state") DispatchTask.State state,
-                     @Param("reconciled") boolean reconciled, @Param("reason") String reason);
+                     @Param("reconciled") boolean reconciled, @Param("reason") String reason,
+                     @Param("completedQty") Integer completedQty);
 
     @Update("UPDATE wes_dispatch_task SET state = #{to} WHERE warehouse_id = #{warehouse} AND id = #{id} AND state = #{from}")
     int updateTask(@Param("warehouse") long warehouse, @Param("id") long id, @Param("from") DispatchTask.State from,

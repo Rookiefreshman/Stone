@@ -60,4 +60,14 @@
           AND reserved_qty >= 0
           AND frozen_qty >= 0
     </update>
+    <insert id="appendChange">
+        INSERT INTO wms_inventory_transaction
+        (warehouse_id, location_id, sku_id, lot_no, biz_type, biz_no, quantity, before_on_hand_qty, after_on_hand_qty,
+         work_task_id, outbound_line_id, delta_available_qty, delta_reserved_qty, delta_frozen_qty)
+        VALUES
+        (#{entry.dimension.warehouseId}, #{entry.dimension.locationId}, #{entry.dimension.skuId}, #{entry.dimension.lotNo},
+         #{entry.action}, #{entry.reference}, #{entry.deltaOnHand}, #{entry.beforeOnHand}, #{entry.afterOnHand},
+         #{entry.taskId,jdbcType=BIGINT}, #{entry.outboundLineId,jdbcType=BIGINT},
+         #{entry.deltaAvailable}, #{entry.deltaReserved}, #{entry.deltaFrozen})
+    </insert>
 </mapper>

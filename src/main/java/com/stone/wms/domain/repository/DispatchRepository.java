@@ -19,6 +19,7 @@ public interface DispatchRepository {
         public DispatchTask.State targetState;
         public boolean reconciled;
         public String reason;
+        public Integer completedQty;
     }
 
     Capacity lockCapacity(long warehouseId);
@@ -34,6 +35,6 @@ public interface DispatchRepository {
     void insertClaim(long warehouseId, String claimKey, String deviceCode, int limit);
     int claimTasks(long warehouseId, List<Long> ids, String claimKey, String deviceCode);
     Event event(long taskId, String eventKey);
-    void insertEvent(long taskId, String eventKey, DispatchTask.State target, boolean reconciled, String reason);
+    void insertEvent(long taskId, String eventKey, DispatchTask.State target, boolean reconciled, String reason, Integer completedQty);
     int updateTask(long warehouseId, long taskId, DispatchTask.State from, DispatchTask.State to);
 }

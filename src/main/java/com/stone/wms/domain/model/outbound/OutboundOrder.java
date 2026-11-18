@@ -40,7 +40,7 @@ public class OutboundOrder {
         }
         List<AllocationPlan> plans = new ArrayList<AllocationPlan>();
         for (OutboundOrderLine line : lines) {
-            plans.add(new AllocationPlan(warehouseId, line.getLocationId(), line.getSkuId(), line.getLotNo(),
+            plans.add(new AllocationPlan(line.getLineId(), warehouseId, line.getLocationId(), line.getSkuId(), line.getLotNo(),
                     line.allocateRemaining()));
         }
         status = OutboundOrderStatus.ALLOCATED;
@@ -71,18 +71,24 @@ public class OutboundOrder {
      * 库存分配计划是出库单聚合对库存聚合发出的领域意图。
      */
     public static class AllocationPlan {
+        private final Long lineId;
         private final Long warehouseId;
         private final Long locationId;
         private final Long skuId;
         private final String lotNo;
         private final int quantity;
 
-        public AllocationPlan(Long warehouseId, Long locationId, Long skuId, String lotNo, int quantity) {
+        public AllocationPlan(Long lineId, Long warehouseId, Long locationId, Long skuId, String lotNo, int quantity) {
+            this.lineId = lineId;
             this.warehouseId = warehouseId;
             this.locationId = locationId;
             this.skuId = skuId;
             this.lotNo = lotNo;
             this.quantity = quantity;
+        }
+
+        public Long getLineId() {
+            return lineId;
         }
 
         public Long getWarehouseId() {

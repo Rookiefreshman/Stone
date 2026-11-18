@@ -51,7 +51,7 @@ sequenceDiagram
 ## 数据库与接口
 
 - V2 迁移创建 wes_dispatch_capacity、wes_dispatch_device、wes_claim、wes_dispatch_task 和 wes_dispatch_event。唯一键分别覆盖仓级任务键、仓级领取键和任务级回执键。任务查询索引覆盖仓、状态、优先级、设备与批次。
-- V3 建立 wms_allocation_receipt，一张出库单至多一个成功分配回执。开通前执行 V1、V2、V3，已有环境仅按顺序执行尚未应用的迁移。迁移沿用该分支现有手工执行方式。运维若事务内同时更新仓与设备容量，先锁仓容量行，再更新设备，保持统一锁顺序。
+- V3 建立 wms_allocation_receipt，一张出库单至多一个成功分配回执。开通前执行 V1 至 V4，已有环境仅按顺序执行尚未应用的迁移。迁移沿用该分支现有手工执行方式。运维若事务内同时更新仓与设备容量，先锁仓容量行，再更新设备，保持统一锁顺序。
 
 仓库 1 的演示容量：
 
@@ -78,4 +78,4 @@ WES 返回通用 ApiResponse 对象。无仓／设备／任务返回 404，参�
 
 ## 复验
 
-常规验证使用 `mvn -B -C -ntp clean verify`。真实 MySQL 并发用例需在一次性测试库先执行 V1–V3，再设置 STONE_TEST_MYSQL_URL、STONE_TEST_MYSQL_USER、STONE_TEST_MYSQL_PASSWORD 后执行同一命令。用例会创建固定测试数据，使用空测试库重跑。集成验证证明给定并发场景下的一致性和限额；生产吞吐量仍由现场容量测试确定。
+常规验证使用 `mvn -B -C -ntp clean verify`。真实 MySQL 并发用例需在一次性测试库先执行 V1 至 V4，再设置 STONE_TEST_MYSQL_URL、STONE_TEST_MYSQL_USER、STONE_TEST_MYSQL_PASSWORD 后执行同一命令。用例会创建固定测试数据，使用空测试库重跑。集成验证证明给定并发场景下的一致性和限额；生产吞吐量仍由现场容量测试确定。

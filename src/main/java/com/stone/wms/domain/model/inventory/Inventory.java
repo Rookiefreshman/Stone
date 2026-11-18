@@ -73,6 +73,9 @@ public class Inventory {
      */
     public void increaseOnHand(int quantity) {
         assertPositive(quantity);
+        if ((long) onHandQty + quantity > Integer.MAX_VALUE) {
+            throw new DomainException("在库数量超出库存数量上限");
+        }
         onHandQty += quantity;
         availableQty += quantity;
         version += 1;
@@ -89,7 +92,7 @@ public class Inventory {
         if (onHandQty < 0 || availableQty < 0 || reservedQty < 0 || frozenQty < 0) {
             throw new DomainException("库存数量不能为负数");
         }
-        if (onHandQty != availableQty + reservedQty + frozenQty) {
+        if (onHandQty != (long) availableQty + reservedQty + frozenQty) {
             throw new DomainException("库存数量不满足账面库存一致性约束");
         }
     }

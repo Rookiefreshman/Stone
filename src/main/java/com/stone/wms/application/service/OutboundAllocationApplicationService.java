@@ -5,11 +5,14 @@ import com.stone.wms.application.dto.AllocateOutboundCommand;
 import com.stone.wms.application.dto.OutboundOrderDto;
 import com.stone.wms.domain.exception.DomainException;
 import com.stone.wms.domain.model.inventory.Inventory;
+import com.stone.wms.domain.model.inventory.InventoryChange;
 import com.stone.wms.domain.model.inventory.InventoryDimension;
 import com.stone.wms.domain.model.inventory.InventoryStatus;
 import com.stone.wms.domain.model.outbound.OutboundOrder;
 import com.stone.wms.domain.repository.InventoryRepository;
 import com.stone.wms.domain.repository.OutboundOrderRepository;
+import com.stone.wms.domain.repository.StockWorkRepository;
+import com.stone.wms.domain.repository.StockWorkRepository.Location;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,13 +28,16 @@ public class OutboundAllocationApplicationService {
     private final OutboundOrderRepository outboundOrderRepository;
     private final InventoryRepository inventoryRepository;
     private final OutboundOrderAssembler outboundOrderAssembler;
+    private final StockWorkRepository stockWorkRepository;
 
     public OutboundAllocationApplicationService(OutboundOrderRepository outboundOrderRepository,
                                                 InventoryRepository inventoryRepository,
-                                                OutboundOrderAssembler outboundOrderAssembler) {
+                                                OutboundOrderAssembler outboundOrderAssembler,
+                                                StockWorkRepository stockWorkRepository) {
         this.outboundOrderRepository = outboundOrderRepository;
         this.inventoryRepository = inventoryRepository;
         this.outboundOrderAssembler = outboundOrderAssembler;
+        this.stockWorkRepository = stockWorkRepository;
     }
 
     /**
@@ -61,13 +67,23 @@ public class OutboundAllocationApplicationService {
         plans.sort(Comparator.comparing(OutboundOrder.AllocationPlan::getLocationId)
                 .thenComparing(OutboundOrder.AllocationPlan::getSkuId)
                 .thenComparing(OutboundOrder.AllocationPlan::getLotNo));
+        Long lockedLocationId = null;
         for (OutboundOrder.AllocationPlan plan : plans) {
+            if (!plan.getLocationId().equals(lockedLocationId)) {
+                Location location = stockWorkRepository.lockLocation(plan.getWarehouseId(), plan.getLocationId());
+                if (location != null && location.freezeKey != null) {
+                    throw new DomainException("源库位已冻结，无法分配");
+                }
+                lockedLocationId = plan.getLocationId();
+            }
             InventoryDimension dimension = new InventoryDimension(plan.getWarehouseId(), plan.getLocationId(),
                     plan.getSkuId(), plan.getLotNo(), InventoryStatus.AVAILABLE);
             Inventory inventory = inventoryRepository.findByDimension(dimension)
                     .orElseThrow(() -> new DomainException("库存不存在，无法分配"));
+            InventoryChange before = new InventoryChange(inventory);
             inventory.reserve(plan.getQuantity());
             inventoryRepository.save(inventory);
+            inventoryRepository.appendChange(before.entry(inventory, "OUTBOUND_RESERVE", order.getOrderNo(), null, plan.getLineId()));
         }
 
         OutboundOrder saved = outboundOrderRepository.save(order);

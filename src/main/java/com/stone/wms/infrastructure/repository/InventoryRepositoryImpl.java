@@ -2,6 +2,7 @@ package com.stone.wms.infrastructure.repository;
 
 import com.stone.wms.domain.exception.DomainException;
 import com.stone.wms.domain.model.inventory.Inventory;
+import com.stone.wms.domain.model.inventory.InventoryChange;
 import com.stone.wms.domain.model.inventory.InventoryDimension;
 import com.stone.wms.domain.repository.InventoryRepository;
 import com.stone.wms.infrastructure.converter.InventoryConverter;
@@ -29,6 +30,16 @@ public class InventoryRepositoryImpl implements InventoryRepository {
         InventoryEntity entity = inventoryMapper.selectByDimension(dimension.getWarehouseId(), dimension.getLocationId(),
                 dimension.getSkuId(), dimension.getLotNo(), dimension.getInventoryStatus().name());
         return entity == null ? Optional.<Inventory>empty() : Optional.of(inventoryConverter.toDomain(entity));
+    }
+
+    @Override
+    public void insert(Inventory inventory) {
+        inventoryMapper.insert(inventoryConverter.toEntity(inventory));
+    }
+
+    @Override
+    public void appendChange(InventoryChange.Entry entry) {
+        inventoryMapper.appendChange(entry);
     }
 
     @Override
