@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stone 仓储作业台</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span aria-hidden="true">S</span><div>Stone<small>仓储作业台</small></div></div>
+    <nav aria-label="仓储功能">
+      <button type="button" data-page="documents" aria-current="page">WMS · 业务单据</button>
+      <button type="button" data-page="inventory">WMS · 库存与流水</button>
+      <button type="button" data-page="waves">WES · 出库波次</button>
+      <button type="button" data-page="execution">WES / WCS · 执行与设备</button>
+      <button type="button" data-page="settings">仓库与主数据</button>
+    </nav>
+  </aside>
+  <main>
+    <header class="top">
+      <h1 id="title">业务单据</h1>
+      <div class="warehouse-picker">
+        <label for="warehouse">当前仓库</label>
+        <select id="warehouse"></select>
+        <button type="button" id="refresh" class="secondary">刷新</button>
+      </div>
+    </header>
+    <p id="notice" role="status" aria-live="polite" hidden></p>
+    <section id="content" aria-labelledby="title"></section>
+  </main>
+</body>
+</html>

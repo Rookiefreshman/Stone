@@ -1,0 +1,18 @@
+server:
+  address: 127.0.0.1
+spring:
+  datasource:
+    url: jdbc:h2:file:./data/stone;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    local-cache-scope: STATEMENT

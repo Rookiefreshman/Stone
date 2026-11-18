@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: ${STONE_DB_URL}
+    username: ${STONE_DB_USER}
+    password: ${STONE_DB_PASSWORD}
+  sql:
+    init:
+      mode: never
