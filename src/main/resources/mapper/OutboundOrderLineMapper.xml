@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.stone.wms.infrastructure.mapper.OutboundOrderLineMapper">
+    <resultMap id="OutboundOrderLineEntityMap" type="com.stone.wms.infrastructure.entity.OutboundOrderLineEntity">
+        <id column="id" property="id"/>
+        <result column="order_id" property="orderId"/>
+        <result column="sku_id" property="skuId"/>
+        <result column="location_id" property="locationId"/>
+        <result column="lot_no" property="lotNo"/>
+        <result column="ordered_qty" property="orderedQty"/>
+        <result column="allocated_qty" property="allocatedQty"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <select id="selectByOrderId" resultMap="OutboundOrderLineEntityMap">
+        SELECT id,
+               order_id,
+               sku_id,
+               location_id,
+               lot_no,
+               ordered_qty,
+               allocated_qty,
+               deleted
+        FROM wms_outbound_order_line
+        WHERE order_id = #{orderId}
+          AND deleted = 0
+        ORDER BY id ASC
+    </select>
+
+    <update id="updateAllocatedQty">
+        UPDATE wms_outbound_order_line
+        SET allocated_qty = #{allocatedQty}
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+</mapper>
