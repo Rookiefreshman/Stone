@@ -26,3 +26,7 @@ mvn test
 [高并发、幂等、任务容量设计与 MySQL 复验](docs/concurrency-dispatch.md)
 
 [入库、移库、库位冻结与库存流水](docs/stock-work-execution.md)
+
+## Agent 业务验收（v0.9.3）
+
+[Java/MySQL 双版本及实际 HTTP 跨服务验收](docs/agent-business-validation-v093.md)。使用独立 CI 测试库，禁止连接生产库；生产写入门禁仍关闭。

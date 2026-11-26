@@ -1,0 +1,137 @@
+name: Stone business verification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ['5.7', '8.0']
+    services:
+      mysql:
+        image: mysql:${{ matrix.mysql }}
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_only
+          MYSQL_DATABASE: stone_ci
+          MYSQL_USER: stone_ci
+          MYSQL_PASSWORD: ci_stone_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '8'
+          cache: maven
+      - name: Apply V1-V5 to disposable database
+        env:
+          MYSQL_CONTAINER: ${{ job.services.mysql.id }}
+        run: |
+          set -euo pipefail
+          for version in 1 2 3 4 5; do
+            files=(src/main/resources/db/migration/V"${version}"__*.sql)
+            test "${#files[@]}" -eq 1
+            test -f "${files[0]}"
+            echo "Applying ${files[0]}"
+            docker exec -i -e MYSQL_PWD=ci_stone_only "$MYSQL_CONTAINER" mysql -ustone_ci stone_ci < "${files[0]}"
+          done
+          docker exec -e MYSQL_PWD=ci_stone_only "$MYSQL_CONTAINER" mysql -ustone_ci stone_ci -e "SELECT VERSION(); SHOW TABLES;"
+      - name: Java unit and MySQL integration verification
+        env:
+          STONE_TEST_MYSQL_URL: 'jdbc:mysql://127.0.0.1:3306/stone_ci?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
+          STONE_TEST_MYSQL_USER: stone_ci
+          STONE_TEST_MYSQL_PASSWORD: ci_stone_only
+        run: mvn -B -ntp clean verify
+      - name: Require all business integration suites to execute
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          reports = pathlib.Path("target/surefire-reports")
+          required = {"DispatchMySqlTest", "DispatchDiagnosticMySqlTest", "OutboundDiagnosticMySqlTest", "CancelReceiptMySqlTest", "CancelOperationServiceTest"}
+          found = set()
+          totals = dict(tests=0, failures=0, errors=0, skipped=0)
+          for path in reports.glob("TEST-*.xml"):
+              root = ET.parse(path).getroot()
+              name = root.attrib["name"].split(".")[-1]
+              counts = {k: int(root.attrib.get(k, "0")) for k in totals}
+              for k, n in counts.items(): totals[k] += n
+              print(name, counts)
+              if name in required:
+                  assert counts["tests"] > 0 and counts["skipped"] == 0, name
+                  found.add(name)
+          print("TOTAL", totals)
+          assert found == required, f"Missing required suites: {required-found}"
+          assert not totals["failures"] and not totals["errors"] and not totals["skipped"], totals
+          PY
+      - name: Checkout pinned Agent contract client
+        uses: actions/checkout@v4
+        with:
+          repository: Rookiefreshman/stone-agent
+          ref: 99c43574fbbeec31c53313a9e160ff09f317ac32
+          path: agent-contract
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Agent contract client dependencies
+        run: |
+          python -m pip install -r agent-contract/requirements.txt
+          python -m pip check
+      - name: Real Java HTTP to Python Agent read-only contract
+        env:
+          MYSQL_CONTAINER: ${{ job.services.mysql.id }}
+          SPRING_DATASOURCE_URL: 'jdbc:mysql://127.0.0.1:3306/stone_ci?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
+          SPRING_DATASOURCE_USERNAME: stone_ci
+          SPRING_DATASOURCE_PASSWORD: ci_stone_only
+          STONE_CI_CONTRACT: '1'
+          STONE_CI_QUERY_TOKEN: ci-only-diagnostic-token-123456789
+          STONE_CI_RECEIPT_TOKEN: ci-only-receipt-token-987654321
+        run: |
+          set -euo pipefail
+          query() { docker exec -e MYSQL_PWD=ci_stone_only "$MYSQL_CONTAINER" mysql -ustone_ci -N -B stone_ci -e "$1"; }
+          row=$(query "SELECT task_id,operation_id FROM wes_cancel_operation_receipt WHERE warehouse_id=99101")
+          test "$(printf '%s\n' "$row" | wc -l)" -eq 1
+          read -r task operation <<< "$row"
+          history=$(query "SELECT id FROM wes_dispatch_task WHERE warehouse_id=403 AND task_key='uncertain'")
+          [[ "$task" =~ ^[1-9][0-9]*$ && "$history" =~ ^[1-9][0-9]*$ && "$operation" =~ ^[0-9a-f-]{36}$ ]]
+          snapshot_sql="SELECT (SELECT COUNT(*) FROM wes_cancel_operation_receipt), (SELECT COUNT(*) FROM wes_claim), (SELECT COUNT(*) FROM wes_dispatch_event), (SELECT COUNT(*) FROM wms_inventory_transaction), (SELECT available_qty FROM wms_inventory WHERE id=99101), (SELECT reserved_qty FROM wms_inventory WHERE id=99101)"
+          before=$(query "$snapshot_sql")
+          java -jar target/stone-wms-0.1.0-SNAPSHOT.jar \
+            --server.address=127.0.0.1 --server.port=18081 \
+            --stone.agent.event-query.enabled=true --stone.agent.event-query.token="$STONE_CI_QUERY_TOKEN" --stone.agent.event-query.warehouses=403 \
+            --stone.agent.outbound-query.enabled=true --stone.agent.outbound-query.token="$STONE_CI_QUERY_TOKEN" --stone.agent.outbound-query.warehouses=97001 \
+            --stone.agent.dispatch-query.enabled=true --stone.agent.dispatch-query.token="$STONE_CI_QUERY_TOKEN" --stone.agent.dispatch-query.warehouses=98001 \
+            --stone.agent.cancel-receipt-query.enabled=true --stone.agent.cancel-receipt-query.token="$STONE_CI_RECEIPT_TOKEN" --stone.agent.cancel-receipt-query.warehouses=99101 \
+            > target/stone-contract-server.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 60); do
+            kill -0 "$pid" || { tail -80 target/stone-contract-server.log; exit 1; }
+            if curl --fail --silent --max-time 2 -H "Authorization: Bearer $STONE_CI_RECEIPT_TOKEN" "http://127.0.0.1:18081/api/wms/warehouses/99101/cancel-operation-receipts/$operation" >/dev/null; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" -eq 1 || { tail -80 target/stone-contract-server.log; exit 1; }
+          (cd agent-contract && python -m scripts.stone_ci_contract --receipt-task "$task" --operation-id "$operation" --history-task "$history")
+          after=$(query "$snapshot_sql")
+          test "$before" = "$after"
+          echo "Read-only contract verified; selected business counts and inventory balances unchanged."
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: surefire-mysql-${{ matrix.mysql }}
+          path: |
+            target/surefire-reports/
+            target/stone-contract-server.log
+          if-no-files-found: warn
