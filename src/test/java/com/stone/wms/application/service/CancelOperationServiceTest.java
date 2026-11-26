@@ -37,9 +37,56 @@ class CancelOperationServiceTest {
         DispatchRepository tasks=mock(DispatchRepository.class);DispatchApplicationService dispatch=mock(DispatchApplicationService.class);
         CancelReceiptRepository receipts=mock(CancelReceiptRepository.class);ObjectProvider<CancelAuthorization> policy=mock(ObjectProvider.class);
         when(policy.getIfAvailable()).thenReturn(mock(CancelAuthorization.class));when(tasks.lockCapacity(1)).thenReturn(new DispatchRepository.Capacity());
+        CancelAuthorization auth=policy.getIfAvailable();
+        when(auth.verifiedApproval(any())).thenReturn(grant(command(),100,200));
+        when(receipts.currentEpochMillis()).thenReturn(150L);
         when(tasks.task(1,101)).thenReturn(new DispatchTask(101,"task-101",10,DispatchTask.State.CANCELLED,null,null,new StockWork(StockWork.Type.TRANSFER,null,8,"L01",10L,20,12)));
         assertThrows(IllegalStateException.class,()->new CancelOperationService(tasks,dispatch,receipts,policy).submit(command()));
-        verifyNoInteractions(dispatch);verify(receipts,never()).insert(anyLong(),anyString(),anyLong(),anyString());
+        verifyNoInteractions(dispatch);verify(receipts,never()).insert(anyLong(),anyString(),anyLong(),anyString(),any());
+    }
+    private VerifiedCancelApproval grant(CancelCommand c,long from,long expires){
+        return new VerifiedCancelApproval("test-issuer","grant-1",c.tenant,c.actor,"reviewer",c.fingerprint(),from,expires);
+    }
+    @Test void verifiedApprovalRejectsSelfReviewAndInvalidSubjects(){
+        CancelCommand c=command();
+        assertThrows(SecurityException.class,()->new VerifiedCancelApproval("issuer","id",c.tenant,c.actor,c.actor,c.fingerprint(),1,2));
+        assertThrows(SecurityException.class,()->new VerifiedCancelApproval("issuer","id",c.tenant,c.actor,"reviewer ",c.fingerprint(),1,2));
+        assertThrows(SecurityException.class,()->new VerifiedCancelApproval("issuer","id",c.tenant,c.actor,"reviewer",c.fingerprint(),2,2));
+    }
+    @Test void exactBindingAndTimeWindow(){
+        CancelCommand c=command();
+        VerifiedCancelApproval g=grant(c,100,200);
+        assertEquals("grant-1",g.bind(c,100).grantId);
+        assertThrows(SecurityException.class,()->g.bind(c,99));
+        assertThrows(SecurityException.class,()->g.bind(c,200));
+        VerifiedCancelApproval wrong=new VerifiedCancelApproval("issuer","id",c.tenant,c.actor,"reviewer","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",100,200);
+        assertThrows(SecurityException.class,()->wrong.bind(c,150));
+        VerifiedCancelApproval wrongTenant=new VerifiedCancelApproval("issuer","id","other",c.actor,"reviewer",c.fingerprint(),100,200);
+        assertThrows(SecurityException.class,()->wrongTenant.bind(c,150));
+    }
+    @SuppressWarnings("unchecked")
+    @Test void missingVerifiedApprovalCannotCancel(){
+        DispatchRepository tasks=mock(DispatchRepository.class);
+        DispatchApplicationService dispatch=mock(DispatchApplicationService.class);
+        CancelReceiptRepository receipts=mock(CancelReceiptRepository.class);
+        ObjectProvider<CancelAuthorization> policy=mock(ObjectProvider.class);
+        when(policy.getIfAvailable()).thenReturn(mock(CancelAuthorization.class));
+        when(tasks.lockCapacity(1)).thenReturn(new DispatchRepository.Capacity());
+        assertThrows(SecurityException.class,()->new CancelOperationService(tasks,dispatch,receipts,policy).submit(command()));
+        verifyNoInteractions(dispatch);
+        verify(receipts,never()).insert(anyLong(),anyString(),anyLong(),anyString(),any());
+    }
+    @SuppressWarnings("unchecked")
+    @Test void revokedAccessCannotEvenReplay(){
+        DispatchRepository tasks=mock(DispatchRepository.class);
+        DispatchApplicationService dispatch=mock(DispatchApplicationService.class);
+        CancelReceiptRepository receipts=mock(CancelReceiptRepository.class);
+        ObjectProvider<CancelAuthorization> policy=mock(ObjectProvider.class);
+        CancelAuthorization auth=mock(CancelAuthorization.class);
+        when(policy.getIfAvailable()).thenReturn(auth);
+        doThrow(new SecurityException("revoked")).when(auth).requireAccess(any());
+        assertThrows(SecurityException.class,()->new CancelOperationService(tasks,dispatch,receipts,policy).submit(command()));
+        verifyNoInteractions(tasks,dispatch,receipts);
     }
     @Test void queryScopeAndMissing(){
         CancelOperationService service=mock(CancelOperationService.class);String token="unit-test-read-only-123456789";
