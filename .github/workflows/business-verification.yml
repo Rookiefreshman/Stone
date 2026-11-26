@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Rookiefreshman/stone-agent
-          ref: 69695dc564ad3fb2ca1b012ee74f70fb3e18052a
+          ref: 97b8585f6dae220a18e223438552af4a5f1652ea
           path: agent-contract
           persist-credentials: false
       - uses: actions/setup-python@v5
