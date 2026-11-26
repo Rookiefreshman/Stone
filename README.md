@@ -30,3 +30,7 @@ mvn test
 ## Agent 业务验收（v0.9.3）
 
 [Java/MySQL 双版本及实际 HTTP 跨服务验收](docs/agent-business-validation-v093.md)。使用独立 CI 测试库，禁止连接生产库；生产写入门禁仍关闭。
+
+## Agent 可信审批与唯一消费（v0.9.4）
+
+[审批绑定与事务内唯一消费](docs/agent-approval-consumption-v094.md)。V6 复用取消回执表，双 MySQL CI 各45项通过；真实授权适配器尚未接入，不开放 Agent 业务写入。
