@@ -323,6 +323,55 @@ class DispatchMySqlTest {
         assertThat(sql.queryForObject("SELECT COUNT(*) FROM wes_dispatch_event WHERE task_id=?", Integer.class, task.id)).isZero();
     }
 
+    @Test
+    void readyTransferCancelAndClaimAreMutuallyExclusive() throws Exception {
+        warehouse(99001, 20, 8, 8);
+        device(99001, "agent-test", 8);
+        location(99001, 1, 20, "ANY");
+        location(99001, 2, 20, "ANY");
+        sql.update("INSERT INTO wms_inventory (id,warehouse_id,location_id,sku_id,lot_no,inventory_status,on_hand_qty,available_qty)"
+                + " VALUES (99001,99001,1,11,'B1','AVAILABLE',10,10)");
+        StockWork work = new StockWork(StockWork.Type.TRANSFER, null, 11, "B1", 1L, 2, 6);
+        DispatchTaskDto task = dispatch.submitStockWork(99001, "cancel-race", 10, work);
+        List<Boolean> results = compete(2, worker -> {
+            if (worker == 0) {
+                try {
+                    return "CANCELLED".equals(dispatch.cancelStockWork(99001, task.id).state);
+                } catch (DispatchException e) {
+                    assertThat(e.getMessage()).contains("未下发");
+                    return false;
+                }
+            }
+            return !dispatch.claim(99001, "agent-test", "race-claim", 1).isEmpty();
+        });
+        assertThat(results).containsExactlyInAnyOrder(true, false);
+        String state = dispatch.stockWorkDetail(99001, task.id).task.state;
+        assertThat(state).isIn("CANCELLED", "IN_FLIGHT");
+        assertThat(reserved(99001)).isEqualTo("CANCELLED".equals(state) ? 0 : 6);
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM wms_inventory_transaction WHERE work_task_id=? AND biz_type='MOVE_RELEASE'",
+                Integer.class, task.id)).isEqualTo("CANCELLED".equals(state) ? 1 : 0);
+    }
+
+    @Test
+    void concurrentReadyCancellationReleasesExactlyOnceAndScopesWarehouse() throws Exception {
+        warehouse(99002, 20, 8, 8);
+        warehouse(99003, 20, 8, 8);
+        location(99002, 1, 20, "ANY");
+        location(99002, 2, 20, "ANY");
+        sql.update("INSERT INTO wms_inventory (id,warehouse_id,location_id,sku_id,lot_no,inventory_status,on_hand_qty,available_qty)"
+                + " VALUES (99002,99002,1,11,'B1','AVAILABLE',10,10)");
+        DispatchTaskDto task = dispatch.submitStockWork(99002, "cancel-repeat", 10,
+                new StockWork(StockWork.Type.TRANSFER, null, 11, "B1", 1L, 2, 6));
+        assertThatThrownBy(() -> dispatch.cancelStockWork(99003, task.id)).isInstanceOf(DispatchException.class);
+        assertThat(reserved(99002)).isEqualTo(6);
+        assertThat(compete(6, worker -> dispatch.cancelStockWork(99002, task.id)))
+                .extracting(t -> t.state).containsOnly("CANCELLED");
+        assertThat(reserved(99002)).isZero();
+        assertThat(sql.queryForObject("SELECT COUNT(*) FROM wms_inventory_transaction WHERE work_task_id=? AND biz_type='MOVE_RELEASE'",
+                Integer.class, task.id)).isEqualTo(1);
+        assertThat(sql.queryForObject("SELECT on_hand_qty FROM wms_inventory WHERE id=99002", Integer.class)).isEqualTo(10);
+    }
+
     private void location(long warehouse, long location, int maxUnits, String policy) {
         sql.update("INSERT INTO wms_work_location (warehouse_id,location_id,max_units,mix_policy) VALUES (?,?,?,?)",
                 warehouse, location, maxUnits, policy);
