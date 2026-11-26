@@ -32,10 +32,10 @@ class CancelReceiptMySqlTest {
     @MockBean CancelAuthorization policy; // Test-only authorizer. Never used in production.
     @SpyBean CancelReceiptRepository receipts;
     @BeforeEach void testAuthorizer(){
-        when(policy.verifiedApproval(any())).thenAnswer(invocation-> {
+        doAnswer(invocation-> {
             CancelCommand c=invocation.getArgument(0);
             return grant(c,c.operationId);
-        });
+        }).when(policy).verifiedApproval(any());
     }
     private VerifiedCancelApproval grant(CancelCommand c,String grantId){
         long now=receipts.currentEpochMillis();
@@ -53,7 +53,7 @@ class CancelReceiptMySqlTest {
         assertEquals(c.fingerprint(),service.submit(c).requestFingerprint);
         assertEquals("ci-reviewer",sql.queryForObject("SELECT approval_reviewer FROM wes_cancel_operation_receipt WHERE warehouse_id=99101",String.class));
         // Replay must not consume an approval again, even if the approval has expired.
-        when(policy.verifiedApproval(any())).thenReturn(null);
+        doReturn(null).when(policy).verifiedApproval(any());
         assertEquals(c.fingerprint(),service.submit(c).requestFingerprint);
         testAuthorizer();
         assertEquals(c.fingerprint(),service.query(c.warehouseId,c.operationId).requestFingerprint);
@@ -90,7 +90,7 @@ class CancelReceiptMySqlTest {
     }
     @Test void sameGrantAcrossWarehousesCommitsOnlyOneCancellation() throws Exception {
         CancelCommand a=fixture(99105), b=fixture(99106);
-        when(policy.verifiedApproval(any())).thenAnswer(invocation->grant(invocation.getArgument(0),"shared-grant"));
+        doAnswer(invocation->grant(invocation.getArgument(0),"shared-grant")).when(policy).verifiedApproval(any());
         ExecutorService pool=Executors.newFixedThreadPool(2);
         try {
             CountDownLatch gate=new CountDownLatch(1);
@@ -111,7 +111,7 @@ class CancelReceiptMySqlTest {
     }
     @Test void expiredApprovalDeniedAndInventoryUnchanged(){
         CancelCommand c=fixture(99107);
-        when(policy.verifiedApproval(any())).thenReturn(new VerifiedCancelApproval("ci-approval","expired",c.tenant,c.actor,"ci-reviewer",c.fingerprint(),1,2));
+        doReturn(new VerifiedCancelApproval("ci-approval","expired",c.tenant,c.actor,"ci-reviewer",c.fingerprint(),1,2)).when(policy).verifiedApproval(any());
         assertThrows(SecurityException.class,()->service.submit(c));
         assertEquals("READY",dispatch.stockWorkDetail(c.warehouseId,c.taskId).task.state);
         assertEquals(6,sql.queryForObject("SELECT reserved_qty FROM wms_inventory WHERE id=?",Integer.class,c.warehouseId));
