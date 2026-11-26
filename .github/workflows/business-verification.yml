@@ -75,7 +75,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Rookiefreshman/stone-agent
-          ref: 99c43574fbbeec31c53313a9e160ff09f317ac32
+          ref: 9a575f192e41d6ee91072339c4eee709a373ce08
           path: agent-contract
           persist-credentials: false
       - uses: actions/setup-python@v5
@@ -85,7 +85,7 @@ jobs:
         run: |
           python -m pip install -r agent-contract/requirements.txt
           python -m pip check
-      - name: Real Java HTTP to Python Agent read-only contract
+      - name: Real Java HTTP contract and durable receipt recovery
         env:
           MYSQL_CONTAINER: ${{ job.services.mysql.id }}
           SPRING_DATASOURCE_URL: 'jdbc:mysql://127.0.0.1:3306/stone_ci?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
